@@ -36,3 +36,8 @@ def web_add_to_watchlist(title: str, year: str = "Unknown", rating: float = 0.0)
 @app.delete("/watchlist")
 def web_clear_watchlist():
     return db_clear_watchlist() # Updated here to use the db_ version
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
