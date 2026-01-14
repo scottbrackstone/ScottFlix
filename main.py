@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from movie_search import search_movie 
-from database import db_add_movie, db_get_watchlist, init_db, db_clear_watchlist
+from database import (db_add_movie, db_get_watchlist, init_db, db_clear_watchlist,
+    db_add_favourite, db_get_favourites, db_clear_favourites
+)
 
 app = FastAPI()
 
@@ -35,8 +37,23 @@ def web_add_to_watchlist(title: str, year: str = "Unknown", rating: float = 0.0)
 
 @app.delete("/watchlist")
 def web_clear_watchlist():
-    return db_clear_watchlist() # Updated here to use the db_ version
+    return db_clear_watchlist() 
 
+@app.get("/favourites")
+def web_get_favourites():
+    return db_get_favourites()
+
+@app.post("/favourites")
+def web_add_to_favourite(title: str, year: str, notes: str = "No notes added"):
+    return db_add_favourite(title, year, notes)
+
+@app.delete("/favourites")
+def web_clear_favourites():
+    return {"message": "Endpoint ready! Next, build the database function."}
+
+@app.delete("/favourites")
+def web_clear_favourites():
+    return db_clear_favourites()
 
 if __name__ == "__main__":
     import uvicorn
