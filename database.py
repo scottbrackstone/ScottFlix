@@ -1,109 +1,53 @@
-import sqlite3
+import os
+from pymongo import MongoClient
+from dotenv import load_dotenv
+
+# 1. Load the secrets from the .env file
+load_dotenv()
+
+# 2. Pull the URI from the "environment"
+# If the .env is set up correctly, this replaces the long messy string
+uri = os.getenv("MONGO_URI") 
+
+client = MongoClient(uri)
+db = client.ScottFlix_DB
+watchlist_col = db.watchlist
+favs_col = db.favourites
+
 
 def init_db():
-    connection = sqlite3.connect("movies.db")
-    cursor = connection.cursor()
+    """MongoDB creates everything automatically on the first insert, 
+    so we just print a success message here."""
+    print("✅ Cloud Database Connected!")
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS watchlist (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT UNIQUE NOT NULL,
-            year TEXT,
-            rating REAL,
-            category TEXT DEFAULT 'Uncategorized'
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS favourites (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT UNIQUE NOT NULL,
-            year TEXT,
-            personal_notes TEXT,
-            added_on DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    connection.commit()
-    connection.close()
-    print("✅ Database initialized and Table created!")
-
-def db_add_movie(title, year, rating):
-    connection = sqlite3.connect("movies.db")
-    cursor = connection.cursor()
-
-    cursor.execute("""
-        INSERT INTO watchlist (title, year, rating)
-        VALUES (?, ?, ?)
-    """, (title, year, rating))
-
-    connection.commit()
-    connection.close()
-
-    return {"status": "success", "message": f"Saved {title} to the SQL Database!"}   
+def db_add_movie(title, year, poster):
+    movie_doc = {"title": title, "year": year, "poster": poster}
+    watchlist_col.insert_one(movie_doc)
+    print(f"✅ Added {title} to Cloud Watchlist")
 
 def db_get_watchlist():
-    connection = sqlite3.connect("movies.db")
-    connection.row_factory = sqlite3.Row
-    cursor = connection.cursor()
-
-    cursor.execute("SELECT id, title, year, rating FROM watchlist")
-    rows = cursor.fetchall()
-    
-    watchlist = [dict(row) for row in rows]
-    
-    connection.close()
-    return watchlist
-
-def db_clear_watchlist():
-    connection = sqlite3.connect("movies.db")
-    cursor = connection.cursor()
-
-    cursor.execute("DELETE FROM watchlist")
-    
-    connection.commit()
-    connection.close()
-    return {"status": "success", "message": "SQL Watchlist cleared!"}
-
-def db_add_favourite(title, year, notes):
-    connection = sqlite3.connect("movies.db")
-    cursor = connection.cursor()
-
-    cursor.execute("""
-        INSERT INTO favourites (title, year, personal_notes)
-        VALUES (?, ?, ?)
-    """, (title, year, notes))
-
-    connection.commit()
-    connection.close()
-
-    return {"status": "success", "message": f"Added {title} to your Favourites!"}
+    # .find() gets everything. We convert it to a list for the HTML.
+    # we exclude the '_id' because it's a special Mongo object that HTML doesn't like
+    movies = list(watchlist_col.find({}, {"_id": 0}))
+    return movies
 
 def db_get_favourites():
-    connection = sqlite3.connect("movies.db")
-    connection.row_factory = sqlite3.Row
-    cursor = connection.cursor()
+    return list(favs_col.find({}, {"_id": 0}))
 
-    cursor.execute("SELECT id, title, year, personal_notes, added_on FROM favourites")
-    rows = cursor.fetchall()
+def db_add_favourite(title, year, notes):
+    fav_doc = {"title": title, "year": year, "notes": notes}
+    favs_col.insert_one(fav_doc)
+    print(f"✅ Added {title} to Cloud Favourites")
 
-    favourites = [dict(row) for row in rows]
-
-    connection.close()
-    return favourites
+def db_clear_watchlist():
+    watchlist_col.delete_many({})
+    print("🗑️ Watchlist Cleared")
 
 def db_clear_favourites():
-    connection = sqlite3.connect("movies.db")
-    cursor = connection.cursor()
+    favs_col.delete_many({})
+    print("🗑️ Favourites Cleared")
 
-    cursor.execute("DELETE FROM favourites")
-
-    connection.commit()
-    connection.close()
-    return {"status": "success", "message": "SQL Favourites table cleared!"}
-
-if __name__ == "__main__":
-    init_db()
-    
-    db_add_favourite("Inception", "2010", "Absolutely mind-bending, loved the ending.")
-    print("Test movie added to Favourites!")
+def db_remove_from_watchlist(title):
+    """Deletes a single movie from the MongoDB watchlist collection by title."""
+    watchlist_col.delete_one({"title": title})
+    print(f"🗑️ MongoDB: Deleted {title}")

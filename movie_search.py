@@ -37,7 +37,8 @@ def search_movie(title):
         data = response.json()
         results = data.get("results", [])
 
-        if results:            
+        if results: 
+            base_image_url = "http://image.tmdb.org/t/p/w500"           
             top_movie = results[0]
             top_overview = top_movie.get('overview', 'No description')
             
@@ -62,7 +63,8 @@ def search_movie(title):
                     "title": movie.get('title', 'Unknown'),
                     "year": movie.get('release_date', '0000')[:4],
                     "rating": round(movie.get('vote_average', 0), 1), 
-                    "overview": clean_overview
+                    "overview": clean_overview,
+                    "poster": base_image_url + movie.get('poster_path') if movie.get('poster_path') else 'N/A'
                 }
                 movie_list.append(movie_data)
 

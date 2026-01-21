@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Results - ScottFlix</title>
+    <style>
+        body { background-color: #141414; color: white; font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .result-card { background: #222; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 20px; }
+        .add-btn { background: #E50914; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
+        .back-link { color: #aaa; text-decoration: none; display: block; margin-bottom: 20px; }
+        .poster-img {
+            width: 100px; /* Fixes the width so they are uniform */
+            height: auto; /* Keeps the aspect ratio correct so they don't look squished */
+            border-radius: 5px; /* Rounds the corners slightly */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">&larr; Back to Dashboard</a>
+        <h1>Search Results</h1>
+
+        {% for movie in results %}
+        <div class="result-card">
+            <img src="{{ movie.poster }}" alt="{{ movie.title }} Poster" class="poster-img">
+    
+            <div class="movie-info">
+                <h2>{{ movie.title }} ({{ movie.year }})</h2>
+                <p>Rating: {{ movie.rating }}/10</p>
+
+                <form action="/add-to-watchlist" method="post">
+                    <input type="hidden" name="title" value="{{ movie.title }}">
+                    <input type="hidden" name="year" value="{{ movie.year }}">
+                    <input type="hidden" name="poster" value="{{ movie.poster }}">
+
+                    <button type="submit" class="add-btn">+ Add to Watchlist</button>
+                </form>
+            </div>
+        </div>
+{% endfor %}
+    </div>
+</body>
+</html>
