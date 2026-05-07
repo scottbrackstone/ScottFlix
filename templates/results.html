@@ -2,43 +2,305 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Results - ScottFlix</title>
     <style>
-        body { background-color: #141414; color: white; font-family: Arial, sans-serif; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .result-card { background: #222; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 20px; }
-        .add-btn { background: #E50914; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
-        .back-link { color: #aaa; text-decoration: none; display: block; margin-bottom: 20px; }
-        .poster-img {
-            width: 100px; /* Fixes the width so they are uniform */
-            height: auto; /* Keeps the aspect ratio correct so they don't look squished */
-            border-radius: 5px; /* Rounds the corners slightly */
+        :root {
+            --netflix-red: #e50914;
+            --bg: #141414;
+            --panel: #181818;
+            --panel-soft: #242424;
+            --text: #ffffff;
+            --muted: #b3b3b3;
+            --line: rgba(255, 255, 255, 0.12);
+            --good: #46d369;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                linear-gradient(180deg, rgba(0, 0, 0, 0.82), var(--bg) 310px),
+                url("https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&w=1800&q=80") top center / cover fixed;
+            color: var(--text);
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 18px clamp(18px, 5vw, 56px);
+            background: rgba(0, 0, 0, 0.72);
+        }
+
+        .brand {
+            color: var(--netflix-red);
+            font-size: clamp(1.7rem, 4vw, 2.55rem);
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .back-link {
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        main {
+            padding: 44px clamp(18px, 5vw, 56px) 64px;
+        }
+
+        .heading {
+            margin-bottom: 24px;
+        }
+
+        .heading h1 {
+            margin: 0 0 8px;
+            font-size: clamp(2rem, 5vw, 4.5rem);
+            line-height: 1;
+        }
+
+        .heading p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 1.05rem;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 18px;
+        }
+
+        .result-card {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            overflow: hidden;
+            min-height: 100%;
+            background: var(--panel);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+        }
+
+        .result-card:hover {
+            transform: translateY(-6px);
+            background: var(--panel-soft);
+            border-color: var(--line);
+        }
+
+        .poster {
+            width: 100%;
+            aspect-ratio: 2 / 3;
+            object-fit: cover;
+            display: block;
+            background: #2b2b2b;
+        }
+
+        .poster-placeholder {
+            display: grid;
+            place-items: center;
+            width: 100%;
+            aspect-ratio: 2 / 3;
+            padding: 22px;
+            color: var(--muted);
+            background: linear-gradient(145deg, #333, #111);
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .movie-info {
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            gap: 10px;
+            padding: 14px;
+        }
+
+        h2 {
+            margin: 0;
+            min-height: 52px;
+            font-size: 1.12rem;
+            line-height: 1.25;
+        }
+
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .rating {
+            color: var(--good);
+            font-weight: 800;
+        }
+
+        .overview {
+            margin: 0;
+            color: #d5d5d5;
+            font-size: 0.92rem;
+            line-height: 1.42;
+        }
+
+        .actions {
+            display: grid;
+            gap: 10px;
+        }
+
+        .rating-form {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+        }
+
+        .rating-form input {
+            min-width: 0;
+            height: 38px;
+            padding: 0 10px;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .rating-form input:focus {
+            border-color: var(--text);
+        }
+
+        button {
+            min-height: 38px;
+            border: 0;
+            border-radius: 4px;
+            padding: 0 12px;
+            cursor: pointer;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .watch-btn {
+            width: 100%;
+            color: var(--text);
+            background: var(--netflix-red);
+        }
+
+        .saved-btn {
+            width: 100%;
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.12);
+            cursor: default;
+        }
+
+        .fav-btn {
+            color: #111;
+            background: var(--text);
+        }
+
+        .genre-line {
+            color: var(--muted);
+            font-size: 0.86rem;
+        }
+
+        .empty-state {
+            display: grid;
+            place-items: center;
+            min-height: 220px;
+            color: var(--muted);
+            border: 1px dashed var(--line);
+            border-radius: 6px;
+            text-align: center;
+            padding: 28px;
+        }
+
+        @media (max-width: 620px) {
+            .topbar {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .rating-form {
+                grid-template-columns: 1fr;
+            }
+
+            .fav-btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="/" class="back-link">&larr; Back to Dashboard</a>
-        <h1>Search Results</h1>
+    <header class="topbar">
+        <div class="brand">ScottFlix</div>
+        <a href="/" class="back-link">Back to Dashboard</a>
+    </header>
 
-        {% for movie in results %}
-        <div class="result-card">
-            <img src="{{ movie.poster }}" alt="{{ movie.title }} Poster" class="poster-img">
-    
-            <div class="movie-info">
-                <h2>{{ movie.title }} ({{ movie.year }})</h2>
-                <p>Rating: {{ movie.rating }}/10</p>
-
-                <form action="/add-to-watchlist" method="post">
-                    <input type="hidden" name="title" value="{{ movie.title }}">
-                    <input type="hidden" name="year" value="{{ movie.year }}">
-                    <input type="hidden" name="poster" value="{{ movie.poster }}">
-
-                    <button type="submit" class="add-btn">+ Add to Watchlist</button>
-                </form>
-            </div>
+    <main>
+        <div class="heading">
+            <h1>Search Results</h1>
+            <p>Add a title to your queue or rate it into your favourites row.</p>
         </div>
-{% endfor %}
-    </div>
+
+        {% if results %}
+        <section class="results-grid">
+            {% for movie in results %}
+            <article class="result-card">
+                {% if movie.poster and movie.poster != 'N/A' %}
+                <img src="{{ movie.poster }}" alt="{{ movie.title }} poster" class="poster">
+                {% else %}
+                <div class="poster-placeholder">{{ movie.title }}</div>
+                {% endif %}
+
+                <div class="movie-info">
+                    <h2>{{ movie.title }}</h2>
+                    <div class="meta">
+                        <span>{{ movie.year }}</span>
+                        <span class="rating">{{ movie.rating }}/10 TMDB</span>
+                    </div>
+                    {% if movie.genres %}
+                    <div class="genre-line">{{ movie.genres }}</div>
+                    {% endif %}
+                    <p class="overview">{{ movie.overview }}</p>
+
+                    <div class="actions">
+                        {% if movie.title in saved_titles %}
+                        <button type="button" class="saved-btn" disabled>Already Saved</button>
+                        {% else %}
+                        <form action="/add-to-watchlist" method="post">
+                            <input type="hidden" name="title" value="{{ movie.title }}">
+                            <input type="hidden" name="year" value="{{ movie.year }}">
+                            <input type="hidden" name="poster" value="{{ movie.poster }}">
+                            <input type="hidden" name="overview" value="{{ movie.overview }}">
+                            <input type="hidden" name="tmdb_id" value="{{ movie.tmdb_id }}">
+                            <input type="hidden" name="genres" value="{{ movie.genres }}">
+                            <input type="hidden" name="trailer_url" value="{{ movie.trailer_url }}">
+                            <button type="submit" class="watch-btn">Add to Watchlist</button>
+                        </form>
+                        {% endif %}
+
+                        <form action="/add-to-favourites" method="post" class="rating-form">
+                            <input type="hidden" name="title" value="{{ movie.title }}">
+                            <input type="hidden" name="year" value="{{ movie.year }}">
+                            <input type="hidden" name="poster" value="{{ movie.poster }}">
+                            <input type="hidden" name="overview" value="{{ movie.overview }}">
+                            <input type="hidden" name="tmdb_id" value="{{ movie.tmdb_id }}">
+                            <input type="hidden" name="genres" value="{{ movie.genres }}">
+                            <input type="hidden" name="trailer_url" value="{{ movie.trailer_url }}">
+                            <input type="number" name="rating" min="0" max="10" step="0.5" value="{{ movie.rating }}" aria-label="Your rating for {{ movie.title }}">
+                            <button type="submit" class="fav-btn">Rate Favourite</button>
+                        </form>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </section>
+        {% else %}
+        <div class="empty-state">No matching movies came back. Try another title from the dashboard search.</div>
+        {% endif %}
+    </main>
 </body>
 </html>

@@ -5,6 +5,28 @@ from dotenv import load_dotenv
 load_dotenv()
 ACCESS_TOKEN = os.getenv("TMDB_TOKEN")
 
+GENRES = {
+    28: "Action",
+    12: "Adventure",
+    16: "Animation",
+    35: "Comedy",
+    80: "Crime",
+    99: "Documentary",
+    18: "Drama",
+    10751: "Family",
+    14: "Fantasy",
+    36: "History",
+    27: "Horror",
+    10402: "Music",
+    9648: "Mystery",
+    10749: "Romance",
+    878: "Sci-Fi",
+    10770: "TV Movie",
+    53: "Thriller",
+    10752: "War",
+    37: "Western",
+}
+
 def get_watchlist():
     try:
         with open("watchlist.txt", "r", encoding="utf-8") as file:
@@ -23,12 +45,43 @@ def clear_watchlist():
         pass
     return {"message": "Watchlist has been completely cleared."}
 
-def search_movie(title):
-    url = "https://api.themoviedb.org/3/search/movie"
-    headers = {
+def tmdb_headers():
+    return {
         "accept": "application/json",
         "Authorization": f"Bearer {ACCESS_TOKEN}"
     }
+
+def get_trailer_url(movie_id):
+    if not movie_id:
+        return ""
+
+    url = f"https://api.themoviedb.org/3/movie/{movie_id}/videos"
+    try:
+        response = requests.get(url, headers=tmdb_headers(), params={"language": "en-US"})
+        response.raise_for_status()
+        videos = response.json().get("results", [])
+        trailer = next(
+            (
+                video for video in videos
+                if video.get("site") == "YouTube" and video.get("type") == "Trailer"
+            ),
+            None,
+        )
+        if not trailer:
+            trailer = next((video for video in videos if video.get("site") == "YouTube"), None)
+        if trailer and trailer.get("key"):
+            return f"https://www.youtube.com/watch?v={trailer['key']}"
+    except requests.exceptions.RequestException:
+        return ""
+
+    return ""
+
+def genre_names(genre_ids):
+    return ", ".join(GENRES.get(genre_id, "") for genre_id in genre_ids if GENRES.get(genre_id))
+
+def search_movie(title):
+    url = "https://api.themoviedb.org/3/search/movie"
+    headers = tmdb_headers()
     params = {"query": title, "language": "en-US"}
 
     try:
@@ -42,8 +95,8 @@ def search_movie(title):
             top_movie = results[0]
             top_overview = top_movie.get('overview', 'No description')
             
-            if len(top_overview) > 200:
-                top_overview = top_overview[:200] + "..."
+            if len(top_overview) > 450:
+                top_overview = top_overview[:450] + "..."
 
             top_pick = {
                 "title": top_movie.get('title', 'Unknown'),
@@ -54,17 +107,20 @@ def search_movie(title):
             for movie in results[:5]:
                 full_overview = movie.get('overview', 'No description')
             
-                if len(full_overview) > 150:
-                    clean_overview = full_overview[:150] + "..."
+                if len(full_overview) > 450:
+                    clean_overview = full_overview[:450] + "..."
                 else:
                     clean_overview = full_overview
 
                 movie_data = {
+                    "tmdb_id": str(movie.get('id', '')),
                     "title": movie.get('title', 'Unknown'),
                     "year": movie.get('release_date', '0000')[:4],
                     "rating": round(movie.get('vote_average', 0), 1), 
                     "overview": clean_overview,
-                    "poster": base_image_url + movie.get('poster_path') if movie.get('poster_path') else 'N/A'
+                    "poster": base_image_url + movie.get('poster_path') if movie.get('poster_path') else 'N/A',
+                    "genres": genre_names(movie.get('genre_ids', [])),
+                    "trailer_url": get_trailer_url(movie.get('id')),
                 }
                 movie_list.append(movie_data)
 
