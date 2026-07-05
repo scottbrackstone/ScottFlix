@@ -1,3 +1,8 @@
+import hashlib
+import hmac
+import os
+import time
+
 from fastapi import FastAPI, Request, Form, responses
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -13,6 +18,90 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
 init_db()
+
+AUTH_COOKIE = "scottflix_session"
+SESSION_SECONDS = 60 * 60 * 24 * 30
+
+def passcode_required():
+    return bool(os.getenv("SCOTTFLIX_PASSCODE")) or os.getenv("VERCEL") == "1"
+
+def auth_configured():
+    return bool(os.getenv("SCOTTFLIX_PASSCODE") and os.getenv("SCOTTFLIX_SECRET_KEY"))
+
+def sign_session(expires):
+    secret = os.getenv("SCOTTFLIX_SECRET_KEY", "")
+    return hmac.new(secret.encode("utf-8"), str(expires).encode("utf-8"), hashlib.sha256).hexdigest()
+
+def create_session_token():
+    expires = int(time.time()) + SESSION_SECONDS
+    return f"{expires}:{sign_session(expires)}"
+
+def valid_session(request: Request):
+    token = request.cookies.get(AUTH_COOKIE, "")
+    try:
+        expires_text, signature = token.split(":", 1)
+        expires = int(expires_text)
+    except ValueError:
+        return False
+
+    if expires < int(time.time()):
+        return False
+
+    expected = sign_session(expires)
+    return hmac.compare_digest(signature, expected)
+
+@app.middleware("http")
+async def protect_scottflix(request: Request, call_next):
+    public_paths = {"/login", "/favicon.ico"}
+    if request.url.path in public_paths:
+        return await call_next(request)
+
+    if not passcode_required():
+        return await call_next(request)
+
+    if not auth_configured():
+        return HTMLResponse(
+            "ScottFlix passcode protection is enabled, but SCOTTFLIX_PASSCODE and SCOTTFLIX_SECRET_KEY are not configured.",
+            status_code=503,
+        )
+
+    if valid_session(request):
+        return await call_next(request)
+
+    return responses.RedirectResponse(url="/login", status_code=303)
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    if passcode_required() and auth_configured() and valid_session(request):
+        return responses.RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
+
+@app.post("/login")
+def login(request: Request, passcode: str = Form(...)):
+    configured_passcode = os.getenv("SCOTTFLIX_PASSCODE", "")
+    if not configured_passcode or not hmac.compare_digest(passcode, configured_passcode):
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "That passcode was not right."},
+            status_code=401,
+        )
+
+    response = responses.RedirectResponse(url="/", status_code=303)
+    response.set_cookie(
+        AUTH_COOKIE,
+        create_session_token(),
+        max_age=SESSION_SECONDS,
+        httponly=True,
+        secure=os.getenv("VERCEL") == "1",
+        samesite="lax",
+    )
+    return response
+
+@app.get("/logout")
+def logout():
+    response = responses.RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie(AUTH_COOKIE)
+    return response
 
 def enrich_saved_movies(movies, list_name):
     for movie in movies:

@@ -1,4 +1,6 @@
-.venv/
+.DS_Store
+movies.db
 __pycache__/
 .env
-*.db.DS_Store
+.venv/
+.vercel
