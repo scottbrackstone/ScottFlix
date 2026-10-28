@@ -9,7 +9,7 @@
     data-notes="{{ movie.notes }}"
     data-overview="{{ movie.overview or 'No description saved yet. Search and re-add this movie to save the plot summary.' }}"
     data-genres="{{ movie.genres }}"
-    data-trailer-url="{{ movie.trailer_url }}"
+    data-trailer-url="{{ movie.trailer_url|http_url }}"
     data-tmdb-id="{{ movie.tmdb_id }}"
     data-added-at="{{ movie.added_at }}"
     data-remove-action="{{ remove_action }}"
@@ -822,7 +822,7 @@
             <p>{{ featured.overview or 'Your movie shelf, streaming style.' }}</p>
             <div class="hero-actions">
                 {% if featured.trailer_url %}
-                <a class="trailer-btn" href="{{ featured.trailer_url }}" target="_blank" rel="noreferrer">Watch Trailer</a>
+                <a class="trailer-btn" href="{{ featured.trailer_url|http_url }}" target="_blank" rel="noreferrer">Watch Trailer</a>
                 {% endif %}
                 <a class="ghost-btn" href="#favourites">Browse Shelf</a>
             </div>
