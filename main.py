@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import os
 import time
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request, Form, responses
 from fastapi.responses import HTMLResponse
@@ -16,6 +17,13 @@ from database import (init_db, db_add_movie, db_get_watchlist,
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+
+def safe_http_url(url):
+    """Keep only http(s) links so a stored trailer URL can't run script when clicked."""
+    url = (url or "").strip()
+    return url if urlsplit(url).scheme.lower() in ("http", "https") else ""
+
+templates.env.filters["http_url"] = safe_http_url
 
 init_db()
 
@@ -74,15 +82,16 @@ async def protect_scottflix(request: Request, call_next):
 def login_page(request: Request):
     if passcode_required() and auth_configured() and valid_session(request):
         return responses.RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
+    return templates.TemplateResponse(request, "login.html", {"error": ""})
 
 @app.post("/login")
 def login(request: Request, passcode: str = Form(...)):
     configured_passcode = os.getenv("SCOTTFLIX_PASSCODE", "")
     if not configured_passcode or not hmac.compare_digest(passcode, configured_passcode):
         return templates.TemplateResponse(
+            request,
             "login.html",
-            {"request": request, "error": "That passcode was not right."},
+            {"error": "That passcode was not right."},
             status_code=401,
         )
 
@@ -166,8 +175,7 @@ def home(request: Request):
     recently_added = sorted(watchlist + favourites, key=recent_value, reverse=True)
     featured = top_rated[0] if top_rated else (recently_added[0] if recently_added else None)
     genre_rows = build_genre_rows(watchlist + favourites)
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "index.html", {
         "watchlist": watchlist,
         "favourites": favourites,
         "top_rated": top_rated,
@@ -181,8 +189,7 @@ def search(request: Request, title: str):
     data = search_movie(title)
     actual_movies = data.get("all_matches", []) 
     saved_titles = {movie.title for movie in db_get_watchlist()} | {movie.title for movie in db_get_favourites()}
-    return templates.TemplateResponse("results.html", {
-        "request": request, 
+    return templates.TemplateResponse(request, "results.html", {
         "results": actual_movies,
         "saved_titles": saved_titles,
     })
@@ -197,7 +204,7 @@ def add_movie(
     genres: str = Form(""),
     trailer_url: str = Form("")
 ):
-    db_add_movie(title, year, poster, overview, tmdb_id, genres, trailer_url)
+    db_add_movie(title, year, poster, overview, tmdb_id, genres, safe_http_url(trailer_url))
     return responses.RedirectResponse(url="/", status_code=303)
 
 @app.post("/add-to-favourites")
@@ -212,7 +219,7 @@ def add_favourite(
     genres: str = Form(""),
     trailer_url: str = Form("")
 ):
-    db_add_favourite(title, year, poster, rating, notes, overview, tmdb_id, genres, trailer_url)
+    db_add_favourite(title, year, poster, rating, notes, overview, tmdb_id, genres, safe_http_url(trailer_url))
     return responses.RedirectResponse(url="/", status_code=303)
 
 @app.post("/update-favourite")
@@ -236,7 +243,7 @@ def move_to_favourites(
     genres: str = Form(""),
     trailer_url: str = Form("")
 ):
-    db_add_favourite(title, year, poster, rating, notes, overview, tmdb_id, genres, trailer_url)
+    db_add_favourite(title, year, poster, rating, notes, overview, tmdb_id, genres, safe_http_url(trailer_url))
     db_remove_from_watchlist(title)
     return responses.RedirectResponse(url="/#favourites", status_code=303)
 
