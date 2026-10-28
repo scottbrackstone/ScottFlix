@@ -74,15 +74,16 @@ async def protect_scottflix(request: Request, call_next):
 def login_page(request: Request):
     if passcode_required() and auth_configured() and valid_session(request):
         return responses.RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
+    return templates.TemplateResponse(request, "login.html", {"error": ""})
 
 @app.post("/login")
 def login(request: Request, passcode: str = Form(...)):
     configured_passcode = os.getenv("SCOTTFLIX_PASSCODE", "")
     if not configured_passcode or not hmac.compare_digest(passcode, configured_passcode):
         return templates.TemplateResponse(
+            request,
             "login.html",
-            {"request": request, "error": "That passcode was not right."},
+            {"error": "That passcode was not right."},
             status_code=401,
         )
 
@@ -166,8 +167,7 @@ def home(request: Request):
     recently_added = sorted(watchlist + favourites, key=recent_value, reverse=True)
     featured = top_rated[0] if top_rated else (recently_added[0] if recently_added else None)
     genre_rows = build_genre_rows(watchlist + favourites)
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "index.html", {
         "watchlist": watchlist,
         "favourites": favourites,
         "top_rated": top_rated,
@@ -181,8 +181,7 @@ def search(request: Request, title: str):
     data = search_movie(title)
     actual_movies = data.get("all_matches", []) 
     saved_titles = {movie.title for movie in db_get_watchlist()} | {movie.title for movie in db_get_favourites()}
-    return templates.TemplateResponse("results.html", {
-        "request": request, 
+    return templates.TemplateResponse(request, "results.html", {
         "results": actual_movies,
         "saved_titles": saved_titles,
     })
